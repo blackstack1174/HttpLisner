@@ -92,6 +92,7 @@
             this.simpleButton1.Size = new System.Drawing.Size(119, 24);
             this.simpleButton1.TabIndex = 3;
             this.simpleButton1.Text = "종료";
+            this.simpleButton1.Click += new System.EventHandler(this.button1_Close_Click);
             // 
             // panelControl1
             // 

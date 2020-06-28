@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -23,43 +24,52 @@ namespace WindowsFormsApp1
             InitializeComponent();
         }
 
-        void ThreadProc(Object stateInfo)
+        void HandleRequest(Object stateInfo)
         {
-            Stream responseStream = getResponseStream(m_HttpListener);
-            ASCIIEncoding ae = new ASCIIEncoding();
-
-            while (true)
+            var context = (HttpListenerContext)stateInfo;
+            switch (context.Request.RawUrl)
             {
-                try
-                {
-                    if(this.isStop == true)
+                case "/Data/":
+                    HttpListenerRequest request = context.Request;
+                    HttpListenerResponse response = context.Response;
+                    string responseString = "<HTML><title>테스트페이지</title> <BODY> 와 개쩐다..</BODY></HTML>";
+                    byte[] buffer = System.Text.Encoding.Default.GetBytes(responseString);
+                    response.ContentLength64 = buffer.Length;
+                    System.IO.Stream output = response.OutputStream;
+                    output.Write(buffer, 0, buffer.Length);
+                    output.Close();
+                    break;
+                case "/MyTemp/":
+                    Stream responseStream = getResponseStream(context);
+                    ASCIIEncoding ae = new ASCIIEncoding();
+                    while (true)
                     {
-                        return;
+                        try
+                        {
+                            if (this.isStop == true) { return; }
+                            MemoryStream tempStr = new MemoryStream();
+                            // this.pictureBox1.Image = this.ScreenCapture();
+                            this.ScreenCapture().Save(tempStr, ImageFormat.Bmp);
+
+                            byte[] boundary = ae.GetBytes("\r\n--myboundary\r\nContent-Type: image/jpeg\r\nContent-Length:" + tempStr.Length + "\r\n\r\n");
+
+                            MemoryStream mem = new System.IO.MemoryStream(boundary);
+                            mem.WriteTo(responseStream);
+                            tempStr.WriteTo(responseStream);
+
+                            responseStream.Flush();
+                        }
+                        catch (System.Net.HttpListenerException ex)
+                        {
+                            responseStream = getResponseStream(context);
+                        }
                     }
-                    MemoryStream tempStr = new MemoryStream();
-                    // this.pictureBox1.Image = this.ScreenCapture();
-                    this.ScreenCapture().Save(tempStr, ImageFormat.Bmp);
 
-                    byte[] boundary = ae.GetBytes("\r\n--myboundary\r\nContent-Type: image/jpeg\r\nContent-Length:" + tempStr.Length + "\r\n\r\n");
-
-                    MemoryStream mem = new System.IO.MemoryStream(boundary);
-                    mem.WriteTo(responseStream);
-                    tempStr.WriteTo(responseStream);
-
-                    responseStream.Flush();
-
-                    System.Threading.Thread.Sleep(50);
-                }
-                catch (System.Net.HttpListenerException ex)
-                {
-                    responseStream = getResponseStream(this.m_HttpListener);
-                }
             }
         }
 
-        private Stream getResponseStream(HttpListener httpList)
+        private Stream getResponseStream(HttpListenerContext context)
         {
-            HttpListenerContext context = httpList.GetContext();
             HttpListenerRequest request = context.Request;
             HttpListenerResponse response = context.Response;
             response.ContentType = "multipart/x-mixed-replace; boundary=--myboundary";
@@ -75,9 +85,20 @@ namespace WindowsFormsApp1
             }
 
             this.m_HttpListener.Prefixes.Add("http://127.0.0.1:8011/MyTemp/");
+            this.m_HttpListener.Prefixes.Add("http://127.0.0.1:8011/Data/");
             this.m_HttpListener.Start();
-
-            System.Threading.ThreadPool.QueueUserWorkItem(this.ThreadProc);
+            while (true)
+            {
+                try
+                {
+                    var context = m_HttpListener.GetContext();
+                    ThreadPool.QueueUserWorkItem(o => HandleRequest(context));
+                }
+                catch (Exception)
+                {
+                    // Ignored for this example
+                }
+            }
         }
 
         private void button1_Close_Click(object sender, EventArgs e)
@@ -85,7 +106,7 @@ namespace WindowsFormsApp1
             this.isStop = true;
             this.m_HttpListener.Stop();
             this.m_HttpListener.Close();
-            
+
         }
 
 
