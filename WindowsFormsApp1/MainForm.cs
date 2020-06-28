@@ -17,7 +17,7 @@ namespace WindowsFormsApp1
     public partial class MainForm : Form
     {
         HttpListener m_HttpListener = new HttpListener();
-
+        bool isStop = false;
         public MainForm()
         {
             InitializeComponent();
@@ -32,6 +32,10 @@ namespace WindowsFormsApp1
             {
                 try
                 {
+                    if(this.isStop == true)
+                    {
+                        return;
+                    }
                     MemoryStream tempStr = new MemoryStream();
                     // this.pictureBox1.Image = this.ScreenCapture();
                     this.ScreenCapture().Save(tempStr, ImageFormat.Bmp);
@@ -76,6 +80,15 @@ namespace WindowsFormsApp1
             System.Threading.ThreadPool.QueueUserWorkItem(this.ThreadProc);
         }
 
+        private void button1_Close_Click(object sender, EventArgs e)
+        {
+            this.isStop = true;
+            this.m_HttpListener.Stop();
+            this.m_HttpListener.Close();
+            
+        }
+
+
         public Bitmap ScreenCapture()
         {
             int w = Screen.PrimaryScreen.WorkingArea.Width;
@@ -92,5 +105,6 @@ namespace WindowsFormsApp1
             System.Diagnostics.Process.Start(this.linkLabel1.Text);
             Debug.WriteLine("시작");
         }
+
     }
 }
