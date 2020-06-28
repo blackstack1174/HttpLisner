@@ -14,11 +14,11 @@ using System.Windows.Forms;
 
 namespace WindowsFormsApp1
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         HttpListener m_HttpListener = new HttpListener();
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
         }
